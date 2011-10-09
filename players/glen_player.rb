@@ -81,19 +81,22 @@ class GlenPlayer
       self.last_hit = salvo
       target = follow(last_hit, direction)
     end
+    i = 0
     if not target
-      try_another_direction
-      debug "now trying #{direction}"
-      target = follow(last_hit, direction)
+      begin
+        try_another_direction
+        debug "now trying #{direction}"
+        target = follow(last_hit, direction)
+        break if (i+=1) > 4
+      end while not target
     end
-    if target
-      debug "target decided: #{target[0]},#{target[1]}"
-      possible.delete(target)
-    else
+    if not target
       debug "got lost"
       @mode = :search
-      possible.pop
+      return possible.pop
     end
+    debug "target decided: #{target[0]},#{target[1]}"
+    possible.delete(target)
   end
 
   def follow(from, direction)
@@ -143,11 +146,11 @@ class GlenPlayer
 
   def debug msg
     return unless ENV['DEBUG']
-    log.puts msg
+    log.puts "#{Process.pid} #{msg}"
     log.flush
   end
   def log
-    @log ||= File.open('debug.log', 'w')
+    @log ||= File.open('debug.log', 'a')
   end
 
   class Board
