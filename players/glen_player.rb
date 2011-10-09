@@ -91,7 +91,8 @@ class GlenPlayer
       possible.delete(target)
     else
       debug "got lost"
-      mode!(:search)
+      @mode = :search
+      possible.pop
     end
   end
 
