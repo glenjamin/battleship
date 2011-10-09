@@ -35,4 +35,19 @@ class GlenTest < MiniTest::Unit::TestCase
     end
   end
 
+  def output_board(board)
+    puts 'begin board'
+    0.upto(9) do |i|
+      0.upto(9) do |j|
+        if board.instance_variable_get('@board')[[i,j]]
+          STDOUT.write '#'
+        else
+          STDOUT.write '.'
+        end
+      end
+      puts ''
+    end
+    puts 'end board'
+  end
+
 end
