@@ -1,6 +1,6 @@
 class GlenPlayer
   def name
-    "Glen (don't guess where ships wont fit)"
+    "Glen (Search & Destroy with cleanup)"
   end
 
   def new_game
@@ -25,39 +25,12 @@ class GlenPlayer
   def record_input(state, ships_remaining)
     self.target_state = state
     self.ships_remaining << ships_remaining
-    remove_impossible!
     debug "result: #{last_shot_result}"
   end
 
   def record_output(coords)
     debug "firing at #{coords[0]},#{coords[1]}"
     self.salvo = coords
-  end
-
-  def remove_impossible!
-    smallest = ships_remaining.last.min
-    to_remove = []
-    possible.each do | cell |
-      if [space(cell, :up) < smallest,
-          space(cell, :down) < smallest,
-          space(cell, :left) < smallest,
-          space(cell, :right) < smallest].all?
-        to_remove << cell
-      end
-    end
-    if to_remove.length > 0
-      debug "possible: #{possible.inspect}"
-      debug "removing: #{to_remove.inspect}"
-      possible.delete_if { |x| to_remove.include?(x) }
-    end
-  end
-
-  def space(from, direction)
-    if look(from, :here) == :unknown
-      1 + space(relative(from, direction), direction)
-    else
-      0
-    end
   end
 
   attr_accessor :salvo, :target_state, :ships_remaining
@@ -132,7 +105,6 @@ class GlenPlayer
     end
     debug "target decided: #{target[0]},#{target[1]}"
     possible.delete(target)
-    target
   end
 
   def locate_target
@@ -148,11 +120,7 @@ class GlenPlayer
   end
 
   def look(from, direction)
-    if direction == :here
-      x, y = from
-    else
-      x, y = relative(from, direction)
-    end
+    x, y = relative(from, direction)
     if (0..9).include?(x) and (0..9).include?(y)
       target_state[y][x]
     end

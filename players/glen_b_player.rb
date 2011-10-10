@@ -1,6 +1,6 @@
 class GlenPlayer
   def name
-    "Glen (don't guess where ships wont fit)"
+    "Glen (search & destroy)"
   end
 
   def new_game
@@ -25,39 +25,12 @@ class GlenPlayer
   def record_input(state, ships_remaining)
     self.target_state = state
     self.ships_remaining << ships_remaining
-    remove_impossible!
     debug "result: #{last_shot_result}"
   end
 
   def record_output(coords)
     debug "firing at #{coords[0]},#{coords[1]}"
     self.salvo = coords
-  end
-
-  def remove_impossible!
-    smallest = ships_remaining.last.min
-    to_remove = []
-    possible.each do | cell |
-      if [space(cell, :up) < smallest,
-          space(cell, :down) < smallest,
-          space(cell, :left) < smallest,
-          space(cell, :right) < smallest].all?
-        to_remove << cell
-      end
-    end
-    if to_remove.length > 0
-      debug "possible: #{possible.inspect}"
-      debug "removing: #{to_remove.inspect}"
-      possible.delete_if { |x| to_remove.include?(x) }
-    end
-  end
-
-  def space(from, direction)
-    if look(from, :here) == :unknown
-      1 + space(relative(from, direction), direction)
-    else
-      0
-    end
   end
 
   attr_accessor :salvo, :target_state, :ships_remaining
@@ -86,12 +59,7 @@ class GlenPlayer
     end
   end
 
-  def hits
-    @hits ||= []
-  end
-  def last_hit
-    @hits.last
-  end
+  attr_accessor :last_hit
   def direction
     @direction ||= :up
   end
@@ -103,25 +71,22 @@ class GlenPlayer
   end
 
   def destroy
-    if last_shot_result == :hit
-      debug "recording last hit at #{salvo[0]},#{salvo[1]}"
-      hits << salvo
-    end
     if last_shot_sunk
-      debug "Sunk a ship!"
-      cleanup_sunk
-      if hits.length == 0
-        return mode!(:search)
-      end
+      debug "Last shot sunk, returning to search"
+      return mode!(:search)
     end
     debug "finding target"
-    target = locate_target
+    if last_shot_result == :hit
+      debug "recording last hit at #{salvo[0]},#{salvo[1]}"
+      self.last_hit = salvo
+      target = follow(last_hit, direction)
+    end
     i = 0
     if not target
       begin
         try_another_direction
         debug "now trying #{direction}"
-        target = locate_target
+        target = follow(last_hit, direction)
         break if (i+=1) > 4
       end while not target
     end
@@ -132,11 +97,6 @@ class GlenPlayer
     end
     debug "target decided: #{target[0]},#{target[1]}"
     possible.delete(target)
-    target
-  end
-
-  def locate_target
-    follow(last_hit, direction)
   end
 
   def follow(from, direction)
@@ -148,11 +108,7 @@ class GlenPlayer
   end
 
   def look(from, direction)
-    if direction == :here
-      x, y = from
-    else
-      x, y = relative(from, direction)
-    end
+    x, y = relative(from, direction)
     if (0..9).include?(x) and (0..9).include?(y)
       target_state[y][x]
     end
@@ -167,31 +123,12 @@ class GlenPlayer
     [x, y]
   end
 
-  def reverse(direction)
-    return :down  if direction == :up
-    return :up    if direction == :down
-    return :left  if direction == :right
-    return :right if direction == :left
-  end
-
   def last_shot_result
     salvo and target_state[salvo[1]][salvo[0]]
   end
   def last_shot_sunk
     ships_remaining.length > 2 and
       ships_remaining[-2].length > ships_remaining[-1].length
-  end
-
-  def cleanup_sunk
-    sunken_ship_size = (ships_remaining[-2] - ships_remaining[-1]).pop || 3
-    debug "sunken ship = #{sunken_ship_size}"
-    ship_coords = [salvo.dup]
-    backwards = reverse(direction)
-    (sunken_ship_size - 1).times do
-      ship_coords << relative(ship_coords[-1], backwards)
-    end
-    hits.delete_if { |x| ship_coords.include?(x) }
-    debug "hits remaining #{hits.inspect}"
   end
 
   def possible
